@@ -1,0 +1,19 @@
+path: /mnt/ssd2/Codes/LPRSultralytics/data/
+train: 
+    - train/images
+    - ankitToll/230124_AllGT/230124_GT/images/
+    - ankitToll/230124_AllGT/230124_GTMark/images/
+    - ankitToll/gtoverlap/
+    - ankitToll/190324_TD/
+val: valid/images
+test: test/images
+
+nc: 1
+names: ['LP']
+
+roboflow:
+  workspace: roboflow-universe-projects
+  project: license-plate-recognition-rxg4e
+  version: 3
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/roboflow-universe-projects/license-plate-recognition-rxg4e/dataset/3
