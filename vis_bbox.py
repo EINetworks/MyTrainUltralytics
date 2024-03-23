@@ -2,6 +2,7 @@ import os
 import cv2
 import argparse
 
+#python vis_bbox.py --folder_path data/train/images/ --classes temp.classes --save_path testout/
 
 def main():
 
@@ -49,7 +50,19 @@ def main():
     annotations.sort()
 
     color = (0,0,255)
+    counter = 0
+    skipcounter = 1
+    StartCounter = 5000
+    TotalCount = 0
+    WrongPlateCount = 0
     for (image, annotation) in zip(images, annotations):
+        print(counter, ': ', image)
+        TotalCount = TotalCount + 1
+        counter = counter + 1
+        if counter%skipcounter != 0:
+            continue
+        if counter < StartCounter:
+            continue
         img = cv2.imread(os.path.join(args.folder_path,image))
         height, width, _ = img.shape
         with open(os.path.join(args.folder_path,annotation)) as f:
@@ -57,6 +70,7 @@ def main():
         content = [x.strip() for x in content]
 
         #newAnnotation = []
+        wrongPlate = 0
         for annot in content:
             annot = annot.split()
             class_idx = int(annot[0])
@@ -68,9 +82,23 @@ def main():
             ymax = int((y*height) + (h * height)/2.0)
             print(x,y,w,h, width, height, xmin, ymin, xmax, ymax)
             #newAnnotation.append((class_idx, x,y,2*w,2*h))
+
+            color = (0,0,255)
+            if w > 0.7 or h > 0.7 or (xmax-xmin) < 50 or (ymax-ymin) < 20:
+                wrongPlate = 1
+                color = (255,0,0)
+
             cv2.rectangle(img, (xmin, ymin), (xmax, ymax), color, 2)
             cv2.putText(img, class_names[int(class_idx)], (xmin, ymin - 5), cv2.FONT_HERSHEY_SIMPLEX,0.5, color, 3)
 
+        if 0: #wrongPlate==1:
+            WrongPlateCount = WrongPlateCount+1
+            imagefilepath = os.path.join(args.folder_path,image)
+            txtfilepath = os.path.join(args.folder_path,annotation)
+            print('Deleting: ', imagefilepath)
+            os.remove(imagefilepath)
+            os.remove(txtfilepath)
+        print('WrongPlateCount: ', WrongPlateCount, 'TotalCount: ', TotalCount)
         cv2.imshow("GT", img)
         cv2.waitKey(0)
         if 0:  ## to fix any mistakes in GT file
@@ -82,9 +110,9 @@ def main():
                 gttxtfile.write(outtxt)  
             gttxtfile.close()
 
-        cv2.imwrite(os.path.join(args.save_path,image), img)
+        #cv2.imwrite(os.path.join(args.save_path,image), img)
         print("saving image",image)
-    
+    print('WrongPlateCount: ', WrongPlateCount, 'TotalCount: ', TotalCount)
     print("Done")
 
 

@@ -10,13 +10,13 @@ import csv
 #yolo val model=runs/detect/train5/weights/best.pt data=data.yaml batch=1 imgsz=640
 #yolo predict model=runs/detect/train5/weights/best.pt imgsz=640 conf=0.5 source="Indian.mp4"
 
-model = YOLO("runs/detect/train9/weights/best.pt")  # load a pretrained model (recommended for training)
+model = YOLO("runs/detect/train/weights/best.pt")  # load a pretrained model (recommended for training)
 
 
 
 
 def list_jpg_files(directory):
-    jpg_files = [f for f in os.listdir(directory) if f.endswith('.Jpg')]
+    jpg_files = [f for f in os.listdir(directory) if f.endswith(('.Jpg','.jpg'))]
     return jpg_files
 
 def read_from_csv(csvfile):
@@ -68,24 +68,28 @@ DET_W = 640
 DET_H = 640
 
 framecounter = 0
-skipinitialFrames = 0
+skipinitialFrames = 200
 wcount = 0
 font = cv2.FONT_HERSHEY_SIMPLEX
 
 
 PlatesList = []
 
-testdir = '/mnt/ssd2/DATASET/LPR/AnkitTollLPRData/190324/'
-CsvPath= '/mnt/ssd2/DATASET/LPR/AnkitTollLPRData//19March24.csv'
+testdir = '/mnt/ssd2/Codes/LPRSultralytics/data/ankitToll/190324_TD/images/'
+#testdir = '/mnt/ssd2/DATASET/LPR/AnkitTollLPRData/160324/'
+#testdir = 'data/train/images/'
+CsvPath= '/mnt/ssd2/DATASET/LPR/AnkitTollLPRData/16March24.csv'
 #'data/ankitToll/230124_AllGT/230124_GT/images/'
 
-GToutpath = '/mnt/ssd2/DATASET/LPR/AnkitTollLPRData/190324_TD/'
-StartImageCounter = 128
-writeGT = 1
+GToutpath = '/mnt/ssd2/DATASET/LPR/AnkitTollLPRData/160324_TD/'
+StartImageCounter = 0
+writeGT = 0
 
+DeleteLowconfPlates = 0
+DeletionCount = 0
 
-#imageFileList = list_jpg_files(testdir)
-imageFileList = read_from_csv(CsvPath)
+imageFileList = list_jpg_files(testdir)
+#imageFileList = read_from_csv(CsvPath)
 
 #print(imageFileList)
 for imagename in imageFileList:
@@ -112,21 +116,43 @@ for imagename in imageFileList:
     origFrame = frame.copy()
     #frame = cv2.imread("multiplate2.jpg")
 
-    frameScaled = cv2.resize(frame, (DET_W,DET_H))
-    frameScaledTorch = torch.from_numpy(frameScaled.transpose(2,0,1))
-    frameScaledTorch = frameScaledTorch.unsqueeze(0)
-    results = model.predict(frameScaledTorch.to('cuda').float(), device = 'cuda', conf = 0.25, show=False)
-    #results = model.predict(frameScaled, device = 'cpu', conf = 0.25, show=False)
+    imgH, imgW, _ = frame.shape
+    scale = min(float(DET_W)/imgW, float(DET_H)/imgH)
+    scaledW = (int)(imgW*scale)
+    scaledH = (int)(imgH*scale)
+    scaledW32 = scaledW
+    if scaledW%32 != 0:
+        scaledW32 = scaledW + (32 - scaledW%32)
+    scaledH32 = scaledH
+    if scaledH%32 != 0:
+        scaledH32 = scaledH + (32 - scaledH%32)
+    print(scaledW, scaledH, scaledW32, scaledH32)
+
+    frameScaled = cv2.resize(frame, (scaledW,scaledH))
+    borderx = (scaledW32-scaledW)
+    bordery = (scaledH32-scaledH)
+    frameScaled = cv2.copyMakeBorder(frameScaled, 0, (int)(bordery), 0, (int)(borderx), cv2.BORDER_REPLICATE)
+    cv2.imshow("frameScaled", frameScaled)
+
+    frameScaledTorch = torch.from_numpy(frameScaled).permute(2, 0, 1).unsqueeze_(0)
+    frameScaledTorch = frameScaledTorch.to(dtype=torch.float, device='cuda')
+    frameScaledTorch.div_(255.)
+    #frameScaledTorch = torch.from_numpy(frameScaled.transpose(2,0,1))
+    #frameScaledTorch = frameScaledTorch.unsqueeze(0)/255.0
+    #results = model.predict(frameScaledTorch, device = 'cuda', conf = 0.25, show=False)	## Running on GPU has some accuracy issues in conversion to torch
+    results = model.predict(frameScaled, device = 'cpu', conf = 0.25, show=False)	#source='/tmp/240319020200123.Jpg'
+
     #print("length is ", len(results))
 
-    scalex = frame.shape[1] / float(DET_W)
-    scaley = frame.shape[0] / float(DET_H)
+    scalex = frame.shape[1] / float(scaledW)
+    scaley = frame.shape[0] / float(scaledH)
     #print('scalex: ', scalex, ', scaley: ',scaley)
 
     plateFound = 0
     lowconfplatefound = 0
     highconfplatefound = 0
     PlateOutputList = []
+    minOcrConf = 1.0
     for result in results:
         boxes = result.boxes.cpu().numpy() # Boxes object for bounding box outputs
         #masks = result.masks  # Masks object for segmentation masks outputs
@@ -134,11 +160,11 @@ for imagename in imageFileList:
         #probs = result.probs  # Probs object for classification outputs
         #print(' boxes.xyxy: ',  boxes.xyxy, len(boxes.xyxy))
 
-        #print(boxes.shape)
+        print('boxes.shape: ', boxes.shape)
         if(len(boxes.xyxy) == 0) :
             continue
         for i in range(0, boxes.shape[0]):
-            #print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>.  Detection  conf: ', boxes.conf[i])
+            print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>.  Detection  conf: ', boxes.conf[i])
             x1 = boxes.xyxy[i][0]*scalex
             y1 = boxes.xyxy[i][1]*scaley
             x2 = boxes.xyxy[i][2]*scalex
@@ -154,6 +180,7 @@ for imagename in imageFileList:
             #cv2.imshow(dispname, plateimage)
             lprocr, lprconf = PlateOCR(plateimage)
             print("Plate OCR: ", lprocr, " OCR Conf: ", lprconf, ", Detection Conf: ", boxes.conf[i])
+            minOcrConf = min(minOcrConf, lprconf)
             
             PlateOutputList.append((x1,y1,x2,y2,boxes.conf[i],lprocr, lprconf))
             plateFound = 1
@@ -192,6 +219,7 @@ for imagename in imageFileList:
         k = cv2.waitKey(0)
     else:
         k = cv2.waitKey(0)
+
 
     if k==ord('q'):
         break
@@ -278,5 +306,19 @@ for imagename in imageFileList:
         gttxtfile.close()
         #outtxt = outfilename + '\t' + outjsonstr + '\n'
         print(outgtfile)
+
+    if DeleteLowconfPlates == 1:
+         if minOcrConf < 0.9:
+             dpos = imagepath.rfind('.')
+             if dpos < 0:
+                 continue
+             labeltxtpath = imagepath[0:dpos] + '.txt'
+             print('Deletion image: ', imagepath)
+             print('Deletion label: ', labeltxtpath)
+             DeletionCount = DeletionCount+1
+             print('DeletionCount: ', DeletionCount, 'framecounter: ', framecounter)
+             #os.remove(imagepath)
+             #os.remove(labeltxtpath)
+             #cv2.waitKey(0)
         
 #results = model.predict(source="./data/db2/valid/images/",  save=True, imgsz=640) # Display preds. Accepts all YOLO predict arguments , , save=True stream=True,, device="cpu"
