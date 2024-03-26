@@ -10,7 +10,7 @@ import csv
 #yolo val model=runs/detect/train5/weights/best.pt data=data.yaml batch=1 imgsz=640
 #yolo predict model=runs/detect/train5/weights/best.pt imgsz=640 conf=0.5 source="Indian.mp4"
 
-model = YOLO("runs/detect/train/weights/best.pt")  # load a pretrained model (recommended for training)
+model = YOLO("runs/detect/train4/weights/best.pt")  # load a pretrained model (recommended for training)
 
 
 
@@ -75,8 +75,8 @@ font = cv2.FONT_HERSHEY_SIMPLEX
 
 PlatesList = []
 
-testdir = '/mnt/ssd2/Codes/LPRSultralytics/data/ankitToll/190324_TD/images/'
-#testdir = '/mnt/ssd2/DATASET/LPR/AnkitTollLPRData/160324/'
+#testdir = '/mnt/ssd2/Codes/LPRSultralytics/data/ankitToll/190324_TD/images/'
+testdir = '/mnt/ssd2/DATASET/LPR/AnkitTollLPRData/160324/'
 #testdir = 'data/train/images/'
 CsvPath= '/mnt/ssd2/DATASET/LPR/AnkitTollLPRData/16March24.csv'
 #'data/ankitToll/230124_AllGT/230124_GT/images/'
@@ -178,18 +178,18 @@ for imagename in imageFileList:
 
             #dispname = "plateimage_" + str(i)
             #cv2.imshow(dispname, plateimage)
-            lprocr, lprconf = PlateOCR(plateimage)
-            print("Plate OCR: ", lprocr, " OCR Conf: ", lprconf, ", Detection Conf: ", boxes.conf[i])
+            lprocr, lprconf, lprminconf = PlateOCR(plateimage)
+            print("Plate OCR: ", lprocr, " OCR Conf: ", lprconf,", OCR MIN Conf: ", lprminconf, ", Detection Conf: ", boxes.conf[i])
             minOcrConf = min(minOcrConf, lprconf)
             
-            PlateOutputList.append((x1,y1,x2,y2,boxes.conf[i],lprocr, lprconf))
+            PlateOutputList.append((x1,y1,x2,y2,boxes.conf[i],lprocr, lprconf, lprminconf))
             plateFound = 1
         #result.show()  # display to screen
 
     #print(PlateOutputList)
     for cureplate in PlateOutputList:
-        x1,y1,x2,y2,detconf,lprocr,ocrconf = cureplate
-        if ocrconf > 0.8 or detconf > 0.4:
+        x1,y1,x2,y2,detconf,lprocr,ocrconf, lprminconf = cureplate
+        if ocrconf > 0.9 and detconf > 0.4:
             cv2.rectangle(frame, (int(x1),int(y1)), (int(x2),int(y2)), (0,0,255), 5)
             myh = (int)(y2-y1) + 40
             cv2.putText(frame, lprocr, ((int)(x1), (int)(y1)+myh), font, 1.0, (0,0,255) , thickness=3, lineType=cv2.LINE_AA)
@@ -215,10 +215,10 @@ for imagename in imageFileList:
     windowName = "frame"
     cv2.namedWindow(windowName, 0)
     cv2.imshow(windowName, drawframe)
-    if lowconfplatefound == 1 and highconfplatefound == 0: #plateFound:
+    if highconfplatefound == 1: #plateFound:
         k = cv2.waitKey(0)
     else:
-        k = cv2.waitKey(0)
+        k = cv2.waitKey(10)
 
 
     if k==ord('q'):
@@ -249,7 +249,7 @@ for imagename in imageFileList:
         cv2.imwrite(outfilename, origFrame)
         gttxtfile = open(outgtfile,'w') 
         for cureplate in PlateOutputList:
-            x1,y1,x2,y2,detconf,lprocr,ocrconf = cureplate
+            x1,y1,x2,y2,detconf,lprocr,ocrconf, lprminconf = cureplate
             imgh, imgw, _ = frame.shape
             platecx = ((x1+x2)/2) / imgw
             platecy = ((y1+y2)/2) / imgh

@@ -1,12 +1,8 @@
 path: /mnt/ssd2/Codes/LPRSultralytics/data/
-train: 
-    - train/images
-    - ankitToll/230124_AllGT/230124_GT/images/
-    - ankitToll/230124_AllGT/230124_GTMark/images/
-    - ankitToll/gtoverlap/
-    - ankitToll/190324_TD/
-val: ankitToll/190324_TD/
-test: ankitToll/190324_TD/
+train: train/images
+val: 
+   - ankitToll/190324_TD/
+test: test/images
 
 nc: 1
 names: ['LP']

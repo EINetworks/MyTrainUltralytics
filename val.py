@@ -16,8 +16,10 @@ model = YOLO("runs/detect/train/weights/best.pt")
 #metrics = model.val(data="ankit.yaml")  # evaluate model performance on the validation set
 #print(metrics)
 
-results = model.predict(source="/tmp/240319020200123.Jpg", show=True, save=True, device='cuda') 
-print(results)
+#results = model.predict(source="./AnkitToll.mp4", show=True, save=False, device='cpu')
+results = model.predict(source="./Indian.mp4", show=True, save=True, device='cpu') 
+ 
+#print(results)
 #results = model("https://ultralytics.com/images/bus.jpg")  # predict on an image
 
 #path = model.export(format="onnx")  # export the model to ONNX format

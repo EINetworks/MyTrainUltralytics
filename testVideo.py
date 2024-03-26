@@ -7,19 +7,20 @@ import cv2
 #yolo val model=runs/detect/train5/weights/best.pt data=data.yaml batch=1 imgsz=640
 #yolo predict model=runs/detect/train5/weights/best.pt imgsz=640 conf=0.5 source="Indian.mp4"
 
-model = YOLO("runs/detect/train5/weights/best.pt")  # load a pretrained model (recommended for training)
+model = YOLO("runs/detect/train4/weights/best.pt")  # load a pretrained model (recommended for training)
 
 #vid = "/mnt/ssd2/DATASET/LPR/LPRSPramaCamera/cc4.mp4"
-#vid = 'Indian.mp4' #'AnkitToll.mp4'
-vid = 'rtsp://admin:Rst12345@122.160.49.247:5002/Streaming/Channels/101/'
+#vid = 'data/ankitrj.mp4'
+vid = 'AnkitToll.mp4' #'Indian.mp4' #'AnkitToll.mp4'
+#vid = 'rtsp://admin:Rst12345@122.160.49.247:5002/Streaming/Channels/101/'
 cap = cv2.VideoCapture(vid)
 
 DET_W = 640
 DET_H = 640
 
-skip = 5
+skip = 1
 framecounter = 0
-skipinitialFrames = 0
+skipinitialFrames = 100
 wcount = 0
 font = cv2.FONT_HERSHEY_SIMPLEX
 
@@ -34,6 +35,7 @@ while 1:
     if frame is None:
         print("Error in frame capture")
         break
+    #frame = cv2.imread('/tmp/240319020200123.Jpg')
     framecounter = framecounter + 1
     if framecounter%skip != 0:
         continue
@@ -43,12 +45,28 @@ while 1:
 
     #frame = cv2.imread("multiplate2.jpg")
 
-    frameScaled = cv2.resize(frame, (DET_W,DET_H))
+    imgH, imgW, _ = frame.shape
+    scale = min(float(DET_W)/imgW, float(DET_H)/imgH)
+    scaledW = (int)(imgW*scale)
+    scaledH = (int)(imgH*scale)
+    scaledW32 = scaledW
+    if scaledW%32 != 0:
+        scaledW32 = scaledW + (32 - scaledW%32)
+    scaledH32 = scaledH
+    if scaledH%32 != 0:
+        scaledH32 = scaledH + (32 - scaledH%32)
+    print(scaledW, scaledH, scaledW32, scaledH32)
+
+    frameScaled = cv2.resize(frame, (scaledW,scaledH))
+    borderx = (scaledW32-scaledW)
+    bordery = (scaledH32-scaledH)
+    frameScaled = cv2.copyMakeBorder(frameScaled, 0, (int)(bordery), 0, (int)(borderx), cv2.BORDER_REPLICATE)
+
     results = model.predict(frameScaled, device = 'cpu', show=False)
     print("length is ", len(results))
 
-    scalex = frame.shape[1] / float(DET_W)
-    scaley = frame.shape[0] / float(DET_H)
+    scalex = frame.shape[1] / float(scaledW)
+    scaley = frame.shape[0] / float(scaledH)
     print('scalex: ', scalex, ', scaley: ',scaley)
 
     plateFound = 0
@@ -76,10 +94,14 @@ while 1:
 
             dispname = "plateimage_" + str(i)
             cv2.imshow(dispname, plateimage)
-            lprocr, lprconf = PlateOCR(plateimage)
+            lprocr, lprconf, lprminconf = PlateOCR(plateimage)
             print("Plate OCR: ", lprocr, " Conf: ", lprconf)
             
             PlateOutputList.append((x1,y1,x2,y2,boxes.conf[i],lprocr, lprconf))
+
+            plateimagename = 'outplates/' + lprocr + '.png'
+            cv2.imwrite(plateimagename, plateimage)
+            #if lprocr == 'HR5GB3958':
             plateFound = 1
         #result.show()  # display to screen
 
@@ -105,7 +127,7 @@ while 1:
     cv2.namedWindow("frame", 0)
     cv2.imshow("frame", frame)
     if plateFound:
-        k = cv2.waitKey(10)
+        k = cv2.waitKey(0)
     else:
         k = cv2.waitKey(10)
 

@@ -224,7 +224,7 @@ def PlateOCR(inpImage):
        #print("b and t is ",b,t)
        #print("mask is ",mask)
        ocroutconf = 0
-
+       ocroutminconf = 1.0
    
        for _ in range(max_seq_len):
 	   #x = out[:, -max_seq_len:]
@@ -244,9 +244,10 @@ def PlateOCR(inpImage):
            logits = F.softmax(logits, dim=-1)
 
            maxconf,maxind  = torch.max(logits,dim=1)
-           #print('maxid:',maxind,', conf: ', maxconf.item())
+           print('maxid:',maxind,', conf: ', maxconf.item())
            out = torch.cat((out, maxind[:,None]), dim=-1)
            ocroutconf = ocroutconf + maxconf.item()
+           ocroutminconf = min(ocroutminconf, maxconf.item())
     
            mask = F.pad(mask, (0, 1), value=True)
 	   #print('eos_token',eos_token)
@@ -268,7 +269,7 @@ def PlateOCR(inpImage):
        #print('dec',out[:,:5])
        #print("LPR output: ", pred, ', Conf: ', ocroutconf)
        #print(f'Output from Decoder {out.shape} | Generation Time {(t2-t1):.3f} (in sec)')
-       return pred, ocroutconf
+       return pred, ocroutconf, ocroutminconf
 	   
 
 #image = cv2.imread("licenceplate.png")
