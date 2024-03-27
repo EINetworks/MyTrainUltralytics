@@ -92,13 +92,17 @@ def image_preprocess(image,fix_dim = (64,480),return_re=0): #(H,W)
 
 
 device = 'cpu' #'cuda'
-dec = torch.jit.load('./jit_models/decoder_LPR_CPU_FULL.pt')
+#dec = torch.jit.load('./jit_models/decoder_LPR_CPU_FULL.pt')
+dec = torch.jit.load('./jit_models/decoder_LPR_CPU_FULL_v6gtfix.pt')
 dec.eval()
 dec.to(device)
 
 
-backbone_file = './ONNX_LPR/BACKBONE_CPU_LPR.onnx'
-encoder_file = './ONNX_LPR/ENCODER_CPU_LPR.onnx'
+#backbone_file = './ONNX_LPR/BACKBONE_CPU_LPR.onnx'
+#encoder_file = './ONNX_LPR/ENCODER_CPU_LPR.onnx'
+backbone_file = './ONNX_LPR/BACKBONE_CPU_LPR_v6gtfix.onnx'
+encoder_file = './ONNX_LPR/ENCODER_CPU_LPR_v6gtfix.onnx'
+
 
 sess_options = ort.SessionOptions()
 sess_options.intra_op_num_threads = 1

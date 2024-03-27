@@ -11,19 +11,24 @@ model = YOLO("runs/detect/train4/weights/best.pt")  # load a pretrained model (r
 
 #vid = "/mnt/ssd2/DATASET/LPR/LPRSPramaCamera/cc4.mp4"
 #vid = 'data/ankitrj.mp4'
-vid = 'AnkitToll.mp4' #'Indian.mp4' #'AnkitToll.mp4'
+vid = 'videos/3.mp4' #'Indian.mp4' #'AnkitToll.mp4'
 #vid = 'rtsp://admin:Rst12345@122.160.49.247:5002/Streaming/Channels/101/'
 cap = cv2.VideoCapture(vid)
+
+ret, frame = cap.read()
 
 DET_W = 640
 DET_H = 640
 
-skip = 1
+skip = 3
 framecounter = 0
 skipinitialFrames = 100
 wcount = 0
 font = cv2.FONT_HERSHEY_SIMPLEX
 
+writevid = 0
+if writevid:
+    outputvid = cv2.VideoWriter('output.avi',cv2.VideoWriter_fourcc(*'MPEG'), 5, (frame.shape[1], frame.shape[0]))
 
 PlatesList = []
 while 1:
@@ -93,23 +98,23 @@ while 1:
             print("Detected Plate size: ", plateimage.shape)
 
             dispname = "plateimage_" + str(i)
-            cv2.imshow(dispname, plateimage)
+            #cv2.imshow(dispname, plateimage)
             lprocr, lprconf, lprminconf = PlateOCR(plateimage)
-            print("Plate OCR: ", lprocr, " Conf: ", lprconf)
+            print("Plate OCR: ", lprocr, " Conf: ", lprconf,", OCR MIN Conf: ", lprminconf)
             
-            PlateOutputList.append((x1,y1,x2,y2,boxes.conf[i],lprocr, lprconf))
+            PlateOutputList.append((x1,y1,x2,y2,boxes.conf[i],lprocr, lprconf, lprminconf))
 
-            plateimagename = 'outplates/' + lprocr + '.png'
-            cv2.imwrite(plateimagename, plateimage)
+            #plateimagename = 'outplates/' + lprocr + '.png'
+            #cv2.imwrite(plateimagename, plateimage)
             #if lprocr == 'HR5GB3958':
             plateFound = 1
         #result.show()  # display to screen
 
     #print(PlateOutputList)
     for cureplate in PlateOutputList:
-        x1,y1,x2,y2,detconf,lprocr,ocrconf = cureplate
-        if ocrconf > 0.8:
-            cv2.rectangle(frame, (int(x1),int(y1)), (int(x2),int(y2)), (0,0,255), 5)
+        x1,y1,x2,y2,detconf,lprocr,ocrconf,lprminconf = cureplate
+        if ocrconf > 0.9 and lprminconf > 0.85:
+            cv2.rectangle(frame, (int(x1),int(y1)), (int(x2),int(y2)), (0,255,0), 5)
             myh = (int)(y2-y1) + 40
             cv2.putText(frame, lprocr, ((int)(x1), (int)(y1)+myh), font, 1.0, (0,0,255) , thickness=3, lineType=cv2.LINE_AA)
            
@@ -120,10 +125,12 @@ while 1:
 
     PlateListLast = PlatesList[-5:]
     dispcnt = 0
-    for platetxt in PlateListLast:
-        cv2.putText(frame, platetxt, (50, 50*dispcnt + 50), font, 1.0, (0,0,255) , thickness=3, lineType=cv2.LINE_AA)
-        dispcnt = dispcnt + 1
+    #for platetxt in PlateListLast:
+    #    cv2.putText(frame, platetxt, (50, 50*dispcnt + 50), font, 1.0, (0,0,255) , thickness=3, lineType=cv2.LINE_AA)
+    #    dispcnt = dispcnt + 1
 
+    if writevid:
+        outputvid.write(frame)
     cv2.namedWindow("frame", 0)
     cv2.imshow("frame", frame)
     if plateFound:
@@ -136,4 +143,6 @@ while 1:
     if k==ord(' '):
         cv2.waitKey(0)
 
+if writevid:
+    outputvid.release()
 #results = model.predict(source="./data/db2/valid/images/",  save=True, imgsz=640) # Display preds. Accepts all YOLO predict arguments , , save=True stream=True,, device="cpu"

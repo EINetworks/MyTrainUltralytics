@@ -4,6 +4,7 @@ import cv2
 import os
 import torch
 import csv
+import re
 
 # Load a model
 #for f in *.*; do ffmpeg -i "$f" -vf scale=640:640 "../lpr/${f%%.png}.png"; done
@@ -16,7 +17,7 @@ model = YOLO("runs/detect/train4/weights/best.pt")  # load a pretrained model (r
 
 
 def list_jpg_files(directory):
-    jpg_files = [f for f in os.listdir(directory) if f.endswith(('.Jpg','.jpg'))]
+    jpg_files = [f for f in os.listdir(directory) if f.endswith(('.Jpg','.jpg', '.png'))]
     return jpg_files
 
 def read_from_csv(csvfile):
@@ -76,7 +77,8 @@ font = cv2.FONT_HERSHEY_SIMPLEX
 PlatesList = []
 
 #testdir = '/mnt/ssd2/Codes/LPRSultralytics/data/ankitToll/190324_TD/images/'
-testdir = '/mnt/ssd2/DATASET/LPR/AnkitTollLPRData/160324/'
+#testdir = '/mnt/ssd2/DATASET/LPR/AnkitTollLPRData/160324/'
+testdir = '/mnt/ssd2/Codes/LPRSultralytics/TestImages/IND_set_10b_india_sparsh_singleline_i/'
 #testdir = 'data/train/images/'
 CsvPath= '/mnt/ssd2/DATASET/LPR/AnkitTollLPRData/16March24.csv'
 #'data/ankitToll/230124_AllGT/230124_GT/images/'
@@ -108,7 +110,7 @@ for imagename in imageFileList:
         continue
 
     frame = cv2.imread(imagepath);
-
+    
     if frame is None:
         print("Error in frame capture")
         continue
@@ -172,6 +174,7 @@ for imagename in imageFileList:
 
             #print("box is",x1,y1,x2,y2)
             plateimage = frame[(int)(y1):(int)(y2), (int)(x1): (int)(x2)]
+
             print("Detected Plate size: ", plateimage.shape)
             #if boxes.conf[i] < 0.5:
             #    lowconfplatefound = 1
@@ -183,7 +186,14 @@ for imagename in imageFileList:
             minOcrConf = min(minOcrConf, lprconf)
             
             PlateOutputList.append((x1,y1,x2,y2,boxes.conf[i],lprocr, lprconf, lprminconf))
+
             plateFound = 1
+            #pattern = re.compile(r'[A-Z]+')
+            #if len(lprocr) > 4 and lprconf > 0.8:
+            #    last4 = lprocr[-4 :]
+            #    print('last4: ', last4)
+            #    if bool(re.search(r'[A-Z]', last4)):
+            #        plateFound = 1
         #result.show()  # display to screen
 
     #print(PlateOutputList)
@@ -197,6 +207,7 @@ for imagename in imageFileList:
             if lprocr not in PlatesList:
                 PlatesList.append(lprocr)
             highconfplatefound = 1
+            
         else:
             cv2.rectangle(frame, (int(x1),int(y1)), (int(x2),int(y2)), (255,0,0), 5)
             if x2-x1 > 50 and y2-y1 > 20:
@@ -215,7 +226,7 @@ for imagename in imageFileList:
     windowName = "frame"
     cv2.namedWindow(windowName, 0)
     cv2.imshow(windowName, drawframe)
-    if highconfplatefound == 1: #plateFound:
+    if plateFound == 1: #plateFound:
         k = cv2.waitKey(0)
     else:
         k = cv2.waitKey(10)
